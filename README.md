@@ -43,6 +43,7 @@
 ### CLOUD9 – Usar a IDE da AWS pode facilitar sua vida (nao precisaria instalar aws cli e nem aws cdk e nem rodar nada local na sua máquina e todo o deploy de infraestrutura é muito mais rápido)
 ### CODE WHISPERER – Quer adicionar AI na sua IDE que vai facilitar muito escrever uma stack no CDK? Utilize o code whisperer! Mais informações: https://medium.com/@neonforge/amazon-codewhisperer-how-to-install-ai-code-assistant-for-visual-studio-code-and-use-it-for-free-2580057d48a0
 ### CONTAS AWS – A partir da conta principal recebida pelo líder do time, criem contas para os demais participantes COM acesso ao console!
+### SNIPPETS - Dentro dos Lambdas no CDK, existem snippets de escrita/leitura em DynamoDB e escrita/leitura no SQS para facilitar sua vida
 ### ARQUITETURA – Lembre-se que a arquitetura proposta é só uma sugestão simplificada. Modificações pensando em segurança, alta disponibilidade e escalabilidade podem dar pontos extras
 ![image](https://github.com/vtex-apps/payment-connector-aws-cdk-template/assets/32963277/b7c603c9-6f4c-4d43-b700-49b6c1b9aef1)
 
