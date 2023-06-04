@@ -1,4 +1,4 @@
-# Hackathon VTEX Payments
+# Hackathon VTEX Payments - Python Version
 
 ## PARTE 1.1 - AWS Access - Console AWS (Via Eventos da AWS)*
 1. Receber event hash da AWS
