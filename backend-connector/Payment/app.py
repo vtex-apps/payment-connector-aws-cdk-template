@@ -9,7 +9,7 @@ TABLE_NAME = os.environ['TABLE_NAME']
 ddbResource = boto3.resource('dynamodb')
 ddbResourceTable = ddbResource.Table(TABLE_NAME)
 
-# PaymentPOST
+# Payment
 # Lambda called by API Gateway.
 # Responsible for receiving new transactions from VTEX Gateway
 
@@ -25,7 +25,6 @@ def lambda_handler(event, context):
        'value': str(event['value']),
        'currency': event['currency'],
        'returnUrl': event['returnUrl'],
-       'colunaNova': event['colunaNova'],
        'status': 'processing'
     }
 
@@ -65,5 +64,14 @@ def lambda_handler(event, context):
 
     # TO DO
 
-    return requests.get('https://api.github.com/users/naveenkrnl')
+    paymentResponse={
+        "message": "add here the authorization response object!"
+    }
+
+    response =  {
+        "statusCode": 200,
+        "body": json.dumps(paymentResponse),
+    }
+
+    return response
 

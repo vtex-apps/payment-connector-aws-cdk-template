@@ -8,8 +8,11 @@ import { DynamoEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 
 export const configureBackend = (scope: any) => {
-  const AcquirerAPI = "testing-12345/v2"
-  // Create a DynamoDB table called PaymentTrackTable
+  const AdquirencyAPI = "testing-12345/v2"
+
+  /////// DynamoDB
+
+  //Create a DynamoDB table called PaymentTrackTable
   const PaymentTrackTable = new DynamoDB.Table(scope, "PaymentTrackTable", {
     partitionKey: {
       name: "paymentId",
@@ -23,7 +26,7 @@ export const configureBackend = (scope: any) => {
 
   /////// QUEUE
 
-  // create an SQS queue called PendingPaymentQueue
+  //create an SQS queue called PendingPaymentQueue
   const PendingPaymentQueue = new sqs.Queue(scope, "PendingPaymentQueue", {
     queueName: "PendingPaymentQueue",
     visibilityTimeout: cdk.Duration.seconds(30),
@@ -32,15 +35,28 @@ export const configureBackend = (scope: any) => {
     encryption: sqs.QueueEncryption.SQS_MANAGED,
   });
 
-  /////// LAMBDA FUNCTIONS AND API GATEWAY
+  ///////  API GATEWAY
 
-  //// PaymentPost
+  //Create an API Gateway using Lambda Proxy
+  const PaymentApi = new APIGateway.RestApi(scope, "PaymentApi", {
+    restApiName: "PaymentApi",
+    description: "PaymentApi",
+    deployOptions: {
+      stageName: "Prod",
+    },
+    defaultCorsPreflightOptions: {
+      allowOrigins: APIGateway.Cors.ALL_ORIGINS,
+      allowMethods: APIGateway.Cors.ALL_METHODS
+    }
+  });
 
-  // Create PaymentPost Lambda function
-  const PaymentPost = new Lambda.Function(scope, "PaymentPost", {
+  //// LAMBDAS
+
+  //Create Payment Lambda function
+  const Payment = new Lambda.Function(scope, "Payment", {
     runtime: Lambda.Runtime.PYTHON_3_9,
     code: Lambda.Code.fromAsset(
-      path.join(__dirname, "../backend-connector/PaymentPost"),
+      path.join(__dirname, "../backend-connector/Payment"),
       {
         bundling: {
           image: Lambda.Runtime.PYTHON_3_9.bundlingImage,
@@ -56,11 +72,11 @@ export const configureBackend = (scope: any) => {
     handler: "app.lambda_handler",
     environment: {
       TABLE_NAME: PaymentTrackTable.tableName,
-      API_URL: `https://${AcquirerAPI}/payment`,
+      API_URL: `https://${AdquirencyAPI}/payment`,
     },
   });
 
-  // Create UserPost Lambda function
+  //Create UserPost Lambda function
   const UserApi = new Lambda.Function(scope, "User", {
     runtime: Lambda.Runtime.PYTHON_3_9,
     code: Lambda.Code.fromAsset(
@@ -83,11 +99,11 @@ export const configureBackend = (scope: any) => {
     },
   });
 
-  // Create ConnectorManifest Lambda function
-  const ConnectorManifest = new Lambda.Function(scope, "Manifest", {
+  //Create Manifest Lambda function
+  const Manifest = new Lambda.Function(scope, "Manifest", {
     runtime: Lambda.Runtime.PYTHON_3_9,
     code: Lambda.Code.fromAsset(
-      path.join(__dirname, "../backend-connector/ConnectorManifest"),
+      path.join(__dirname, "../backend-connector/Manifest"),
       {
         bundling: {
           image: Lambda.Runtime.PYTHON_3_9.bundlingImage,
@@ -103,35 +119,83 @@ export const configureBackend = (scope: any) => {
     handler: "app.lambda_handler"
   });
 
-  // Create an API Gateway using Lambda Proxy
-  const PaymentApi = new APIGateway.RestApi(scope, "PaymentApi", {
-    restApiName: "PaymentApi",
-    description: "PaymentApi",
-    deployOptions: {
-      stageName: "Prod",
-    },
-    defaultCorsPreflightOptions: {
-      allowOrigins: APIGateway.Cors.ALL_ORIGINS,
-      allowMethods: APIGateway.Cors.ALL_METHODS
-    }
+  //Create Settlement Lambda function
+  const Settlement = new Lambda.Function(scope, "Settlement", {
+    runtime: Lambda.Runtime.PYTHON_3_9,
+    code: Lambda.Code.fromAsset(
+      path.join(__dirname, "../backend-connector/Settlement"),
+      {
+        bundling: {
+          image: Lambda.Runtime.PYTHON_3_9.bundlingImage,
+          command: [
+            "bash",
+            "-c",
+            "pip install -r requirements.txt -t /asset-output && cp -au . /asset-output",
+          ],
+        },
+      }
+    ),
+    memorySize: 128,
+    handler: "app.lambda_handler"
+  });
+
+  //Create Refund Lambda function
+  const Refund = new Lambda.Function(scope, "Refund", {
+    runtime: Lambda.Runtime.PYTHON_3_9,
+    code: Lambda.Code.fromAsset(
+      path.join(__dirname, "../backend-connector/Refund"),
+      {
+        bundling: {
+          image: Lambda.Runtime.PYTHON_3_9.bundlingImage,
+          command: [
+            "bash",
+            "-c",
+            "pip install -r requirements.txt -t /asset-output && cp -au . /asset-output",
+          ],
+        },
+      }
+    ),
+    memorySize: 128,
+    handler: "app.lambda_handler"
+  });
+
+  //Create Cancellation Lambda function
+  const Cancellation = new Lambda.Function(scope, "Cancellation", {
+    runtime: Lambda.Runtime.PYTHON_3_9,
+    code: Lambda.Code.fromAsset(
+      path.join(__dirname, "../backend-connector/Cancellation"),
+      {
+        bundling: {
+          image: Lambda.Runtime.PYTHON_3_9.bundlingImage,
+          command: [
+            "bash",
+            "-c",
+            "pip install -r requirements.txt -t /asset-output && cp -au . /asset-output",
+          ],
+        },
+      }
+    ),
+    memorySize: 128,
+    handler: "app.lambda_handler"
   });
 
   //create api resource for Lambda Proxy
-  const PaymentApiResource = PaymentApi.root.addResource("payment");
+  const PaymentResource = PaymentApi.root.addResource("payments");
   const UserApiResource = PaymentApi.root.addResource("user");
   const ManifestResource = PaymentApi.root.addResource("manifest");
+  const SettlementResource = PaymentApi.root.addResource("settlements");
+  const CancellationResource = PaymentApi.root.addResource("cancellations");
+  const RefundResource = PaymentApi.root.addResource("refunds");
 
   //create Lambda Proxy Integration
-  const PaymentApiLambdaIntegration = new APIGateway.LambdaIntegration(
-    PaymentPost,
+  const PaymentLambdaIntegration = new APIGateway.LambdaIntegration(
+    Payment,
     {
       proxy: true,
     }
   );
-
-  //create Lambda Proxy Integration
-  const ConnectorManifestLambdaIntegration = new APIGateway.LambdaIntegration(
-    ConnectorManifest,
+  const ManifestLambdaIntegration = new APIGateway.LambdaIntegration(
+    Manifest,
     {
       proxy: true,
     }
@@ -142,12 +206,32 @@ export const configureBackend = (scope: any) => {
       proxy: true,
     }
   );
-  //add Lambda Proxy Integration to apiResource
-  PaymentApiResource.addMethod("POST", PaymentApiLambdaIntegration);
-  ManifestResource.addMethod("GET", ConnectorManifestLambdaIntegration);
-  UserApiResource.addMethod("POST", UserApiLambdaIntegration);
+  const SettlementLambdaIntegration = new APIGateway.LambdaIntegration(
+    Settlement,
+    {
+      proxy: true,
+    }
+  );
+  const CancellationLambdaIntegration = new APIGateway.LambdaIntegration(
+    Cancellation,
+    {
+      proxy: true,
+    }
+  );
+  const RefundLambdaIntegration = new APIGateway.LambdaIntegration(
+    Refund,
+    {
+      proxy: true,
+    }
+  );
 
-  //// PendingPaymentStream
+  //add Lambda Proxy Integration to apiResource
+  PaymentResource.addMethod("POST", PaymentLambdaIntegration);
+  ManifestResource.addMethod("GET", ManifestLambdaIntegration);
+  UserApiResource.addMethod("POST", UserApiLambdaIntegration);
+  SettlementResource.addMethod("POST", SettlementLambdaIntegration);
+  CancellationResource.addMethod("POST", CancellationLambdaIntegration);
+  RefundResource.addMethod("POST", RefundLambdaIntegration);
 
   //Create PendingPaymentStream Lambda function
   const PendingPaymentStream = new Lambda.Function(
@@ -205,8 +289,6 @@ export const configureBackend = (scope: any) => {
     })
   );
 
-  //// ProcessPendingPayment
-
   //Create ProcessPendingPayment Lambda function
   const ProcessPendingPayment = new Lambda.Function(
     scope,
@@ -230,7 +312,7 @@ export const configureBackend = (scope: any) => {
       handler: "app.lambda_handler",
       environment: {
         PENDING_PAYMENT_QUEUE: PendingPaymentQueue.queueName,
-        API_URL: `https://${AcquirerAPI}`,
+        API_URL: `https://${AdquirencyAPI}`,
       },
     }
   );
@@ -248,7 +330,7 @@ export const configureBackend = (scope: any) => {
   /////// PERMISSIONS
 
   //Provide access to Lambdas on PaymentTrackTable
-  PaymentTrackTable.grantReadWriteData(PaymentPost);
+  PaymentTrackTable.grantReadWriteData(Payment);
   PaymentTrackTable.grantReadWriteData(PendingPaymentStream);
   PaymentTrackTable.grantReadWriteData(ProcessPendingPayment);
   PaymentTrackTable.grantStreamRead(PendingPaymentStream);
